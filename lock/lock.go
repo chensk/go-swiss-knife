@@ -1,9 +1,9 @@
 package lock
 
 import (
-	"code.byted.org/ocean/swiss-knife/net"
 	"errors"
 	"fmt"
+	"github.com/chensk/swiss-knife/net"
 	"time"
 )
 

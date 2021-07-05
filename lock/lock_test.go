@@ -1,7 +1,7 @@
 package lock
 
 import (
-	"code.byted.org/ocean/swiss-knife/lock/provider"
+	"github.com/chensk/swiss-knife/lock/provider"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"sync"

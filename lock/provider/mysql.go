@@ -5,10 +5,10 @@ User can custom table name, but should keep the same columns name as follows:
 package provider
 
 import (
-	"code.byted.org/ocean/swiss-knife/lock"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chensk/swiss-knife/lock"
 	"gorm.io/gorm"
 	"time"
 )
