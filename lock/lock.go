@@ -3,7 +3,7 @@ package lock
 import (
 	"errors"
 	"fmt"
-	"github.com/chensk/swiss-knife/net"
+	"github.com/chensk/go-swiss-knife/net"
 	"time"
 )
 

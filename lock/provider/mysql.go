@@ -8,7 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chensk/swiss-knife/lock"
+	"github.com/chensk/go-swiss-knife/lock"
 	"gorm.io/gorm"
 	"time"
 )

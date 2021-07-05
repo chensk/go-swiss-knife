@@ -1,4 +1,4 @@
-module github.com/chensk/swiss-knife
+module github.com/chensk/go-swiss-knife
 
 go 1.16
 
