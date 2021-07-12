@@ -109,7 +109,7 @@ func (m mysqlLockProvider) TryLock(conf lock.Configuration) (lock.Lock, error) {
 		"name":       conf.Name,
 		"locked_at":  DbTime(time.Now()),
 		"locked_by":  conf.LockBy,
-		"lock_until": DbTime(time.Now().Add(conf.LockAtMost * time.Millisecond)),
+		"lock_until": DbTime(time.Now().Add(conf.LockAtMost)),
 	}
 
 	if lockRegistry[conf.Name] {
