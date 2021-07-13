@@ -58,6 +58,8 @@ type Session interface {
 	Set(key string, value interface{})
 
 	Save(ctx context.Context) error
+
+	SessionId() string
 }
 
 type session struct {
@@ -87,6 +89,10 @@ func (s *session) Save(ctx context.Context) error {
 		return err
 	}
 	return s.storeStrategy.Set(ctx, s.sid, string(vv), s.expiration)
+}
+
+func (s *session) SessionId() string {
+	return s.sid
 }
 
 type SessionOptions interface {
