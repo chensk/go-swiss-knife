@@ -1,4 +1,4 @@
-module github.com/chensk/go-swiss-knife
+module code.byted.org/ocean/go-swiss-knife
 
 go 1.16
 
