@@ -21,7 +21,7 @@
 
 ```go
 type Lock interface {
-Unlock() error
+    Unlock() error
 }
 ```
 
@@ -57,9 +57,7 @@ CREATE TABLE `shedlock`
     `locked_by`  varchar(255)             DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_name` (`name`)
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 250
-  DEFAULT CHARSET = utf8
+) ENGINE = InnoDB DEFAULT CHARSET = utf8
 ```
 
 一个使用gorm实现的分布式锁的例子如下：
@@ -70,13 +68,13 @@ db, _ := gorm.Open(mysql.Open("root:root1234@tcp(127.0.0.1:3306)/test?charset=ut
 ...
 // 非阻塞式
 loc, err := TryLockTask("test-lock", []Options{
-WithProvider(provider.NewMysqlLockProvider(db)),
-WithLockAtMost(10 * time.Millisecond),
+    WithProvider(provider.NewMysqlLockProvider(db)),
+    WithLockAtMost(10 * time.Millisecond),
 }...)
 // 阻塞式
 loc, err = LockTask("test-lock", []Options{
-WithProvider(provider.NewMysqlLockProvider(db)),
-WithLockAtMost(10 * time.Millisecond),
+    WithProvider(provider.NewMysqlLockProvider(db)),
+    WithLockAtMost(10 * time.Millisecond),
 }...)
 // 业务逻辑
 ...
@@ -127,12 +125,12 @@ func WithSessionStore(store SessionStore) SessionOptions
 var sid string
 // 第一次会话
 s, _ := CreateSession(func() string {
-return sid
+    return sid
 }, func (s string) {
-sid = s
+    sid = s
 }, []SessionOptions{
-// 使用本地内存保存session
-WithExpiration(2 * time.Second),
+    // 使用本地内存保存session
+    WithExpiration(2 * time.Second),
 })
 
 _ = s.Set("test_key", "test_value")
@@ -142,11 +140,11 @@ _ := s.Save(context.Background())
 ...
 // 第二次会话
 s, _ := CreateSession(func () string {
-return sid
+    return sid
 }, func (s string) {
-sid = s
+    sid = s
 }, []SessionOptions{
-WithExpiration(2 * time.Second),
+    WithExpiration(2 * time.Second),
 })
 // 读取第一次会话存储的数据
 v, ok = s.Get("test_key")
