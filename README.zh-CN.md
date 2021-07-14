@@ -21,7 +21,7 @@
 
 ```go
 type Lock interface {
-Unlock() error
+    Unlock() error
 }
 ```
 
@@ -48,35 +48,32 @@ func WithProvider(provider LockProvider) Options
 如果使用基于mysql的分布式锁，需要先在数据库中创建一张shedlock表：
 
 ```mysql
-CREATE TABLE `shedlock`
-(
-    `id`         bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-    `name`       varchar(64)         NOT NULL,
-    `lock_until` timestamp(3)        NULL DEFAULT NULL,
-    `locked_at`  timestamp(3)        NULL DEFAULT NULL,
-    `locked_by`  varchar(255)             DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_name` (`name`)
-) ENGINE = InnoDB
-  AUTO_INCREMENT = 250
-  DEFAULT CHARSET = utf8
+CREATE TABLE `shedlock` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL,
+  `lock_until` timestamp(3) NULL DEFAULT NULL,
+  `locked_at` timestamp(3) NULL DEFAULT NULL,
+  `locked_by` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=250 DEFAULT CHARSET=utf8
 ```
 
 一个使用gorm实现的分布式锁的例子如下：
 
 ```go
 db, _ := gorm.Open(mysql.Open("root:root1234@tcp(127.0.0.1:3306)/test?charset=utf8mb4&parseTime=True&loc=Local"),
-&gorm.Config{SkipDefaultTransaction: true})
+		&gorm.Config{SkipDefaultTransaction: true})
 ...
 // 非阻塞式
 loc, err := TryLockTask("test-lock", []Options{
-WithProvider(provider.NewMysqlLockProvider(db)),
-WithLockAtMost(10 * time.Millisecond),
+    WithProvider(provider.NewMysqlLockProvider(db)), 
+    WithLockAtMost(10 * time.Millisecond),
 }...)
 // 阻塞式
 loc, err = LockTask("test-lock", []Options{
-WithProvider(provider.NewMysqlLockProvider(db)),
-WithLockAtMost(10 * time.Millisecond),
+    WithProvider(provider.NewMysqlLockProvider(db)),
+    WithLockAtMost(10 * time.Millisecond),
 }...)
 // 业务逻辑
 ...
@@ -127,12 +124,12 @@ func WithSessionStore(store SessionStore) SessionOptions
 var sid string
 // 第一次会话
 s, _ := CreateSession(func() string {
-return sid
-}, func (s string) {
-sid = s
+    return sid
+}, func(s string) {
+    sid = s
 }, []SessionOptions{
-// 使用本地内存保存session
-WithExpiration(2 * time.Second),
+    // 使用本地内存保存session
+    WithExpiration(2 * time.Second),
 })
 
 _ = s.Set("test_key", "test_value")
@@ -141,12 +138,12 @@ _ = s.Set("test_key", "test_value")
 _ := s.Save(context.Background())
 ...
 // 第二次会话
-s, _ := CreateSession(func () string {
-return sid
-}, func (s string) {
-sid = s
+s, _ := CreateSession(func() string {
+    return sid
+}, func(s string) {
+    sid = s
 }, []SessionOptions{
-WithExpiration(2 * time.Second),
+    WithExpiration(2 * time.Second),
 })
 // 读取第一次会话存储的数据
 v, ok = s.Get("test_key")

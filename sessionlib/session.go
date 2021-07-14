@@ -11,61 +11,82 @@ import (
 	"time"
 )
 
+// custom session id getter, such as fetched from http cookies.
 type SessionIdGetter func() string
+
+// custom session id setter, such as storing in http cookies.
 type SessionIdSetter func(string)
 
 // CreateSession gets the session store associated with sessionId which can be extracted by SessionIdGetter.
-// If the session doesn't exist, create a new one and set the sessionId with SessionIdSetter
+// If the session doesn't exist, create a new one and set the sessionId with SessionIdSetter.
+// You can specify the store strategy by specify session options. By default, if WithRedisClusters option specifies
+// the redis cluster, RedisSessionStore is used to store the session. Otherwise, InMemorySessionStore is used.
+// You can implement your custom store strategy and specify it by WithSessionStore options.
+//
+// sessionIdGetter may not be nil, while sessionIdSetter can be.
 func CreateSession(sessionIdGetter SessionIdGetter, sessionIdSetter SessionIdSetter, options []SessionOptions) (Session, error) {
-	opt := &sessionOptions{redisClusters: nil, expiration: -1, redisTimeout: 5 * time.Second}
+	if sessionIdGetter == nil {
+		return nil, errors.New("invalid session id getter")
+	}
+	opt := &sessionOptions{RedisClusters: nil, Expiration: 24 * time.Hour, RedisTimeout: 5 * time.Second}
 	for _, o := range options {
 		o.apply(opt)
 	}
 	var strategy SessionStore = nil
-	if len(opt.redisPsm) != 0 {
+	if opt.Store != nil {
+		strategy = opt.Store
+	} else if len(opt.RedisClusters) != 0 {
 		_strategy, err := NewRedisSessionStore(opt)
 		if err != nil {
 			return nil, err
 		}
 		strategy = _strategy
 	} else {
-		return nil, errors.New("no store strategy specified")
+		strategy = NewInMemorySessionStore()
 	}
 
 	sid := sessionIdGetter()
 	v, err := strategy.Get(context.Background(), sid)
 	if err == nil {
-		var vv map[string]interface{}
+		var vv map[string]string
 		if err := json.Unmarshal([]byte(v), &vv); err != nil {
 			return nil, err
 		}
-		return &session{storeStrategy: strategy, sid: sid, expiration: opt.expiration, values: vv}, nil
+		return &session{storeStrategy: strategy, sid: sid, expiration: opt.Expiration, values: vv}, nil
 	}
 	sid = newUUID()
-	sessionIdSetter(sid)
+	if sessionIdSetter != nil {
+		sessionIdSetter(sid)
+	}
 
 	return &session{
 		storeStrategy: strategy,
 		sid:           sid,
-		values:        make(map[string]interface{}),
-		expiration:    opt.expiration,
+		values:        make(map[string]string),
+		expiration:    opt.Expiration,
 	}, nil
 }
 
+// Session represents session which can get and put data into. You can call Get and Set any times but nothing would be store
+// until Save is called.
 type Session interface {
+	// Get by key, returning the value and whether the key exists.
 	Get(key string) (interface{}, bool)
 
-	Set(key string, value interface{})
+	// Set key-value pair
+	Set(key, value string) error
 
+	// Save saves all the key-value pairs set before
 	Save(ctx context.Context) error
 
+	// get session id
 	SessionId() string
 }
 
 type session struct {
 	mutex         sync.RWMutex
 	sid           string
-	values        map[string]interface{}
+	values        map[string]string
 	expiration    time.Duration
 	storeStrategy SessionStore
 }
@@ -77,10 +98,11 @@ func (s *session) Get(key string) (interface{}, bool) {
 	return v, ok
 }
 
-func (s *session) Set(key string, value interface{}) {
+func (s *session) Set(key, value string) error {
 	s.mutex.Lock()
 	s.mutex.Unlock()
 	s.values[key] = value
+	return nil
 }
 
 func (s *session) Save(ctx context.Context) error {
@@ -99,35 +121,41 @@ type SessionOptions interface {
 	apply(*sessionOptions)
 }
 
+// WithRedisClusters specifies redis clusters. If redis only contains one node, put it in the slice whose length is 1.
 func WithRedisClusters(clusters []string) SessionOptions {
 	return newFuncOption(func(option *sessionOptions) {
-		option.redisClusters = clusters
+		option.RedisClusters = clusters
 	})
 }
 
+// WithExpiration specifies the session expiration time. Session would be removed when the expiration time passes.
 func WithExpiration(expiration time.Duration) SessionOptions {
 	return newFuncOption(func(option *sessionOptions) {
-		option.expiration = expiration
+		option.Expiration = expiration
 	})
 }
 
+// WithRedisTimeout specifies the redis timeout
 func WithRedisTimeout(timeout time.Duration) SessionOptions {
 	return newFuncOption(func(option *sessionOptions) {
-		option.redisTimeout = timeout
+		option.RedisTimeout = timeout
 	})
 }
 
-func WithRedisPsm(psm string) SessionOptions {
+// WithSessionStore specifies custom session store implementation. By default, if redis clusters are specified,
+// RedisSessionStore would be used which is implemented based on redis. Otherwise, InMemorySessionStore would be used,
+// which is implemented in memory. You can implement your session store using other persistent strategy such as database.
+func WithSessionStore(store SessionStore) SessionOptions {
 	return newFuncOption(func(option *sessionOptions) {
-		option.redisPsm = psm
+		option.Store = store
 	})
 }
 
 type sessionOptions struct {
-	redisClusters []string
-	expiration    time.Duration
-	redisTimeout  time.Duration
-	redisPsm      string
+	RedisClusters []string
+	Expiration    time.Duration
+	RedisTimeout  time.Duration
+	Store         SessionStore
 }
 
 type funcOption struct {

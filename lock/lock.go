@@ -1,9 +1,9 @@
 package lock
 
 import (
-	"code.byted.org/ocean/go-swiss-knife/net"
 	"errors"
 	"fmt"
+	"github.com/chensk/go-swiss-knife/net"
 	"time"
 )
 
@@ -85,18 +85,11 @@ func WithProvider(provider LockProvider) Options {
 	})
 }
 
-func WithCheckPeriod(checkPeriod time.Duration) Options {
-	return newFuncOptions(func(opt *Configuration) {
-		opt.CheckPeriod = checkPeriod
-	})
-}
-
 type Configuration struct {
 	Provider    LockProvider
 	Name        string
 	LockAtMost  time.Duration
 	LockTimeout time.Duration
-	CheckPeriod time.Duration
 	LockBy      string
 }
 

@@ -1,43 +1,61 @@
 package sessionlib
 
 import (
-	redis "code.byted.org/kv/goredis/v5"
 	"context"
 	"errors"
+	"github.com/go-redis/redis/v8"
 	"time"
 )
 
+// InMemorySessionStore stores the session in redis.
 type RedisSessionStore struct {
-	client *redis.Client
+	client        *redis.Client
+	clusterClient *redis.ClusterClient
 }
 
 func NewRedisSessionStore(options *sessionOptions) (SessionStore, error) {
-	if options.redisPsm == "" {
-		return nil, errors.New("redis psm not found")
+	if len(options.RedisClusters) == 0 {
+		return nil, errors.New("redis cluster not found")
 	}
-	opt := redis.NewOption()
-	opt.ReadTimeout = options.redisTimeout
-	opt.WriteTimeout = options.redisTimeout
-	opt.DialTimeout = options.redisTimeout
-	cli, err := redis.NewClientWithOption(options.redisPsm, opt)
-	if err != nil {
-		return nil, err
+	if len(options.RedisClusters) == 1 {
+		cli := redis.NewClient(&redis.Options{
+			Addr: options.RedisClusters[0],
+		})
+		return &RedisSessionStore{
+			client: cli,
+		}, nil
+	} else {
+		cli := redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs: options.RedisClusters,
+		})
+		return &RedisSessionStore{
+			clusterClient: cli,
+		}, nil
 	}
-
-	return &RedisSessionStore{
-		client: cli,
-	}, nil
 }
 
 func (r *RedisSessionStore) Get(ctx context.Context, key string) (string, error) {
-	v, err := r.client.Get(key).Result()
-	return v, err
+	if r.client != nil {
+		v, err := r.client.Get(ctx, key).Result()
+		return v, err
+	} else {
+		v, err := r.clusterClient.Get(ctx, key).Result()
+		return v, err
+	}
 }
 
-func (r *RedisSessionStore) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
-	return r.client.Set(key, value, expiration).Err()
+func (r *RedisSessionStore) Set(ctx context.Context, key string, value string, expiration time.Duration) error {
+	if r.client != nil {
+		return r.client.Set(ctx, key, value, expiration).Err()
+	} else {
+		return r.clusterClient.Set(ctx, key, value, expiration).Err()
+	}
 }
 
 func (r *RedisSessionStore) Delete(ctx context.Context, key string) error {
-	return r.client.Del(key).Err()
+	if r.client != nil {
+		return r.client.Del(ctx, key).Err()
+	} else {
+		return r.clusterClient.Del(ctx, key).Err()
+	}
 }
