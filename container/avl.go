@@ -8,7 +8,7 @@ import (
 
 // BalancedBinarySearchTree implements balanced binary search tree (AVL tree).
 type BalancedBinarySearchTree struct {
-	root *treeNode
+	root *avlTreeNode
 	size int
 }
 
@@ -20,17 +20,18 @@ func NewBinarySearchTree(values []NodeValue) (*BalancedBinarySearchTree, error) 
 	}
 
 	for _, v := range values {
-		_ = tree.Insert(v)
+		tree.Insert(v)
 	}
 	return tree, nil
 }
 
-// Height returns height of tree
+// Height returns height of tree.
 func (t *BalancedBinarySearchTree) Height() int {
 	_, h := _validateAvl(t.root)
 	return h
 }
 
+// Size returns size of tree.
 func (t *BalancedBinarySearchTree) Size() int {
 	return t.size
 }
@@ -42,18 +43,17 @@ func (t *BalancedBinarySearchTree) ValidateAvl() bool {
 }
 
 // Insert inserts a new node and keeps the tree an AVL tree. It should take O(logN) time.
-func (t *BalancedBinarySearchTree) Insert(value NodeValue) error {
-	ok, _, r := _insert(t.root, t.root, value, nil, true)
+func (t *BalancedBinarySearchTree) Insert(value NodeValue) {
+	ok, _, r := avlInsert(t.root, t.root, value, nil, true)
 	if ok {
 		t.size++
 		t.root = r
 	}
-	return nil
 }
 
 // Delete deletes specified node and keeps the tree an AVL tree. It should take O(logN) time.
 func (t *BalancedBinarySearchTree) Delete(value NodeValue) bool {
-	ok, _, r := _delete(t.root, t.root, nil, value)
+	ok, _, r := avlDelete(t.root, t.root, nil, value)
 	if ok {
 		t.size--
 		t.root = r
@@ -63,7 +63,7 @@ func (t *BalancedBinarySearchTree) Delete(value NodeValue) bool {
 
 // Traverse traverse tree with specified order and call the function for each non-nil node.
 func (t *BalancedBinarySearchTree) Traverse(f func(value NodeValue), order TraverseOrder) {
-	_traverse(t.root, f, order)
+	avlTraverse(t.root, f, order)
 }
 
 // String returns the inorder sequence and preorder sequence.
@@ -86,7 +86,7 @@ func (t *BalancedBinarySearchTree) PrettyPrint() string {
 	}
 	type Ele struct {
 		tab int
-		n   *treeNode
+		n   *avlTreeNode
 	}
 	stack := make([]Ele, 0)
 	stack = append(stack, Ele{tab: 0, n: t.root})
@@ -115,21 +115,21 @@ func (t *BalancedBinarySearchTree) PrettyPrint() string {
 
 // Exist returns whether the value exists.
 func (t *BalancedBinarySearchTree) Exist(value NodeValue) bool {
-	found, _, _ := _search(value, t.root, nil)
+	found, _, _ := avlSearch(value, t.root, nil)
 	return found
 }
 
-func _delete(root *treeNode, node *treeNode, parent *treeNode, value NodeValue) (bool, bool, *treeNode) {
+func avlDelete(root *avlTreeNode, node *avlTreeNode, parent *avlTreeNode, value NodeValue) (bool, bool, *avlTreeNode) {
 	if node == nil {
 		return false, false, root
 	}
 	if node.value.Compare(value) < 0 {
-		if ok, shorten, r := _delete(root, node.right, node, value); !ok {
+		if ok, shorten, r := avlDelete(root, node.right, node, value); !ok {
 			return false, false, r
 		} else if shorten {
 			switch node.bf {
 			case LH:
-				r, s := _leftBalance(root, node, parent)
+				r, s := avlLeftBalance(root, node, parent)
 				return true, s, r
 			case EH:
 				node.bf = LH
@@ -142,7 +142,7 @@ func _delete(root *treeNode, node *treeNode, parent *treeNode, value NodeValue) 
 			return true, false, r
 		}
 	} else if node.value.Compare(value) > 0 {
-		if ok, shorten, r := _delete(root, node.left, node, value); !ok {
+		if ok, shorten, r := avlDelete(root, node.left, node, value); !ok {
 			return false, false, r
 		} else if shorten {
 			switch node.bf {
@@ -153,7 +153,7 @@ func _delete(root *treeNode, node *treeNode, parent *treeNode, value NodeValue) 
 				node.bf = RH
 				return true, false, r
 			case RH:
-				r, s := _rightBalance(root, node, parent)
+				r, s := avlRightBalance(root, node, parent)
 				return true, s, r
 			}
 		} else {
@@ -187,13 +187,13 @@ func _delete(root *treeNode, node *treeNode, parent *treeNode, value NodeValue) 
 	}
 }
 
-func _recursiveQ(q *treeNode, s *treeNode, node *treeNode, root *treeNode, parent *treeNode) (bool, *treeNode) {
+func _recursiveQ(q *avlTreeNode, s *avlTreeNode, node *avlTreeNode, root *avlTreeNode, parent *avlTreeNode) (bool, *avlTreeNode) {
 	if s.right != nil {
 		if shorten, r := _recursiveQ(s, s.right, node, root, q); shorten {
 			if q == node {
 				switch q.bf {
 				case RH:
-					rr, b := _rightBalance(root, q, parent)
+					rr, b := avlRightBalance(root, q, parent)
 					return b, rr
 				case EH:
 					q.bf = RH
@@ -207,7 +207,7 @@ func _recursiveQ(q *treeNode, s *treeNode, node *treeNode, root *treeNode, paren
 			}
 			switch q.bf {
 			case LH:
-				rr, b := _leftBalance(root, q, parent)
+				rr, b := avlLeftBalance(root, q, parent)
 				return b, rr
 			case EH:
 				q.bf = LH
@@ -234,7 +234,7 @@ func _recursiveQ(q *treeNode, s *treeNode, node *treeNode, root *treeNode, paren
 			return false, root
 		case RH:
 			node.bf = EH
-			r, sh := _rightBalance(root, node, parent)
+			r, sh := avlRightBalance(root, node, parent)
 			return sh, r
 		default:
 			panic("expected")
@@ -243,7 +243,7 @@ func _recursiveQ(q *treeNode, s *treeNode, node *treeNode, root *treeNode, paren
 		q.right = s.left
 		switch q.bf {
 		case LH:
-			r, sh := _leftBalance(root, q, parent)
+			r, sh := avlLeftBalance(root, q, parent)
 			return sh, r
 		case EH:
 			q.bf = LH
@@ -257,12 +257,12 @@ func _recursiveQ(q *treeNode, s *treeNode, node *treeNode, root *treeNode, paren
 	}
 }
 
-func _insert(root *treeNode, node *treeNode, value NodeValue, parent *treeNode, left bool) (bool, bool, *treeNode) {
+func avlInsert(root *avlTreeNode, node *avlTreeNode, value NodeValue, parent *avlTreeNode, left bool) (bool, bool, *avlTreeNode) {
 	if root == nil {
-		return true, true, &treeNode{value: value}
+		return true, true, &avlTreeNode{value: value}
 	}
 	if node == nil {
-		ele := &treeNode{value: value}
+		ele := &avlTreeNode{value: value}
 		if left {
 			parent.left = ele
 		} else {
@@ -274,12 +274,12 @@ func _insert(root *treeNode, node *treeNode, value NodeValue, parent *treeNode, 
 		return false, false, node
 	}
 	if node.value.Compare(value) > 0 {
-		if ok, taller, _ := _insert(root, node.left, value, node, true); !ok {
+		if ok, taller, _ := avlInsert(root, node.left, value, node, true); !ok {
 			return false, false, root
 		} else if taller {
 			switch node.bf {
 			case LH:
-				r, _ := _leftBalance(root, node, parent)
+				r, _ := avlLeftBalance(root, node, parent)
 				return true, false, r
 			case EH:
 				node.bf = LH
@@ -294,12 +294,12 @@ func _insert(root *treeNode, node *treeNode, value NodeValue, parent *treeNode, 
 			return true, false, root
 		}
 	} else {
-		if ok, taller, _ := _insert(root, node.right, value, node, false); !ok {
+		if ok, taller, _ := avlInsert(root, node.right, value, node, false); !ok {
 			return false, false, root
 		} else if taller {
 			switch node.bf {
 			case RH:
-				r, _ := _rightBalance(root, node, parent)
+				r, _ := avlRightBalance(root, node, parent)
 				return true, false, r
 			case EH:
 				node.bf = RH
@@ -316,7 +316,7 @@ func _insert(root *treeNode, node *treeNode, value NodeValue, parent *treeNode, 
 	}
 }
 
-func _search(value NodeValue, root *treeNode, lastVisited *treeNode) (bool, *treeNode, *treeNode) {
+func avlSearch(value NodeValue, root *avlTreeNode, lastVisited *avlTreeNode) (bool, *avlTreeNode, *avlTreeNode) {
 	if root == nil {
 		return false, nil, lastVisited
 	}
@@ -324,35 +324,34 @@ func _search(value NodeValue, root *treeNode, lastVisited *treeNode) (bool, *tre
 		return true, root, lastVisited
 	}
 	if root.value.Compare(value) > 0 {
-		return _search(value, root.left, root)
+		return avlSearch(value, root.left, root)
 	}
-	return _search(value, root.right, root)
+	return avlSearch(value, root.right, root)
 }
 
-func _traverse(root *treeNode, f func(value NodeValue), order TraverseOrder) {
+func avlTraverse(root *avlTreeNode, f func(value NodeValue), order TraverseOrder) {
 	if root == nil {
 		return
 	}
 	switch order {
 	case PreOrder:
 		f(root.value)
-		_traverse(root.left, f, order)
-		_traverse(root.right, f, order)
+		avlTraverse(root.left, f, order)
+		avlTraverse(root.right, f, order)
 	case InOrder:
-		_traverse(root.left, f, order)
+		avlTraverse(root.left, f, order)
 		f(root.value)
-		_traverse(root.right, f, order)
+		avlTraverse(root.right, f, order)
 	case PostOrder:
-		_traverse(root.left, f, order)
-		_traverse(root.right, f, order)
+		avlTraverse(root.left, f, order)
+		avlTraverse(root.right, f, order)
 		f(root.value)
 	default:
 		panic("unexpected order")
 	}
 }
 
-// _leftBalance re-balance left. Note that height would decrease by 1.
-func _leftBalance(root *treeNode, node *treeNode, parent *treeNode) (*treeNode, bool) {
+func avlLeftBalance(root *avlTreeNode, node *avlTreeNode, parent *avlTreeNode) (*avlTreeNode, bool) {
 	if node == nil {
 		return root, false
 	}
@@ -361,7 +360,7 @@ func _leftBalance(root *treeNode, node *treeNode, parent *treeNode) (*treeNode, 
 	case LH:
 		node.bf = EH
 		node.left.bf = EH
-		return _rightRotate(root, node, parent), true
+		return avlRightRotate(root, node, parent), true
 	case RH:
 		lr := node.left.right
 		switch lr.bf {
@@ -376,18 +375,18 @@ func _leftBalance(root *treeNode, node *treeNode, parent *treeNode) (*treeNode, 
 			node.left.bf = EH
 		}
 		lr.bf = EH
-		root = _leftRotate(root, node.left, node)
-		return _rightRotate(root, node, parent), true
+		root = avlLeftRotate(root, node.left, node)
+		return avlRightRotate(root, node, parent), true
 	case EH:
 		node.bf = LH
 		node.left.bf = RH
-		return _rightRotate(root, node, parent), false
+		return avlRightRotate(root, node, parent), false
 	default:
 		panic("unexpected")
 	}
 }
 
-func _rightBalance(root *treeNode, node *treeNode, parent *treeNode) (*treeNode, bool) {
+func avlRightBalance(root *avlTreeNode, node *avlTreeNode, parent *avlTreeNode) (*avlTreeNode, bool) {
 	if node == nil {
 		return root, false
 	}
@@ -396,7 +395,7 @@ func _rightBalance(root *treeNode, node *treeNode, parent *treeNode) (*treeNode,
 	case RH:
 		node.bf = EH
 		node.right.bf = EH
-		return _leftRotate(root, node, parent), true
+		return avlLeftRotate(root, node, parent), true
 	case LH:
 		rl := node.right.left
 		switch rl.bf {
@@ -411,19 +410,19 @@ func _rightBalance(root *treeNode, node *treeNode, parent *treeNode) (*treeNode,
 			node.right.bf = EH
 		}
 		rl.bf = EH
-		root = _rightRotate(root, node.right, node)
-		return _leftRotate(root, node, parent), true
+		root = avlRightRotate(root, node.right, node)
+		return avlLeftRotate(root, node, parent), true
 	case EH:
 		node.bf = RH
 		node.right.bf = LH
-		return _leftRotate(root, node, parent), false
+		return avlLeftRotate(root, node, parent), false
 	default:
 		panic("unexpected")
 	}
 }
 
 // left rotate tree left and return new root
-func _leftRotate(root *treeNode, node *treeNode, parent *treeNode) *treeNode {
+func avlLeftRotate(root *avlTreeNode, node *avlTreeNode, parent *avlTreeNode) *avlTreeNode {
 	r := node.right
 	node.right = r.left
 	r.left = node
@@ -441,7 +440,7 @@ func _leftRotate(root *treeNode, node *treeNode, parent *treeNode) *treeNode {
 }
 
 // left rotate tree right and return new root
-func _rightRotate(root *treeNode, node *treeNode, parent *treeNode) *treeNode {
+func avlRightRotate(root *avlTreeNode, node *avlTreeNode, parent *avlTreeNode) *avlTreeNode {
 	l := node.left
 	node.left = l.right
 	l.right = node
@@ -458,7 +457,7 @@ func _rightRotate(root *treeNode, node *treeNode, parent *treeNode) *treeNode {
 	return root
 }
 
-func _validateAvl(root *treeNode) (bool, int) {
+func _validateAvl(root *avlTreeNode) (bool, int) {
 	if root == nil {
 		return true, 0
 	}
@@ -467,10 +466,10 @@ func _validateAvl(root *treeNode) (bool, int) {
 	return lb && rb && math.Abs(float64(lh)-float64(rh)) <= 1, int(math.Max(float64(lh), float64(rh))) + 1
 }
 
-type treeNode struct {
+type avlTreeNode struct {
 	value NodeValue
-	left  *treeNode
-	right *treeNode
+	left  *avlTreeNode
+	right *avlTreeNode
 	bf    int
 }
 
