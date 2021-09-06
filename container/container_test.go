@@ -54,10 +54,11 @@ func TestSlice(t *testing.T) {
 	}
 }
 
-func TestBinarySearchTree(t *testing.T) {
-	tree := createRandomTree(10000)
-	t.Logf("height: %d, size: %d, validate: %t\n", tree.Height(), tree.Size(), tree.ValidateAvl())
-
+func TestTree(t *testing.T) {
+	tree := createRandomAvlTree(10000, true)
+	//tree := createRandomRbTree(10000, true)
+	t.Logf("height: %d, size: %d, validate: %t\n", tree.Height(), tree.Size(), tree.Validate())
+	//t.Logf("tree: %s\n", tree.PrettyPrint())
 	r := rand.NewSource(time.Now().UnixNano())
 	rnd := rand.New(r)
 	for tree.Size() > 0 {
@@ -70,18 +71,40 @@ func TestBinarySearchTree(t *testing.T) {
 		}
 		i := inOrders[rnd.Intn(tree.Size())]
 		tree.Delete(i)
-		if !tree.ValidateAvl() {
-			t.Fatal("tree is not valid")
+		if !tree.Validate() {
+			t.Fatalf("after deleted %d, tree is not valid, tree: %s\n", i, tree.PrettyPrint())
 		}
+		t.Logf("succesfully deleted %d, tree: %d\n", i, tree.Size())
 	}
+	t.Logf("tree: %s\n", tree.PrettyPrint())
 }
 
-func createRandomTree(size int) *BalancedBinarySearchTree {
+func createRandomAvlTree(size int, asc bool) *BalancedBinarySearchTree {
 	input := make([]NodeValue, size)
 	for i := 0; i < size; i++ {
-		input[i] = Element(i)
+		if asc {
+			input[i] = Element(i)
+		} else {
+			input[i] = Element(size - i)
+		}
 	}
 	tree, err := NewBinarySearchTree(input)
+	if err != nil {
+		panic(err)
+	}
+	return tree
+}
+
+func createRandomRbTree(size int, asc bool) *RedBlackTree {
+	input := make([]NodeValue, size)
+	for i := 0; i < size; i++ {
+		if asc {
+			input[i] = Element(i)
+		} else {
+			input[i] = Element(size - i)
+		}
+	}
+	tree, err := NewRedBlackTree(input)
 	if err != nil {
 		panic(err)
 	}

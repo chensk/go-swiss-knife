@@ -36,8 +36,8 @@ func (t *BalancedBinarySearchTree) Size() int {
 	return t.size
 }
 
-// ValidateAvl returns whether the tree is AVL tree which can be asserted true.
-func (t *BalancedBinarySearchTree) ValidateAvl() bool {
+// Validate returns whether the tree is AVL tree which can be asserted true.
+func (t *BalancedBinarySearchTree) Validate() bool {
 	b, _ := _validateAvl(t.root)
 	return b
 }

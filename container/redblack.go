@@ -56,17 +56,16 @@ func (t *RedBlackTree) Insert(value NodeValue) {
 
 // Delete deletes specified node and keeps the tree an red-black tree. It should take O(logN) time.
 func (t *RedBlackTree) Delete(value NodeValue) bool {
-	//_, b, r := rbDelete(t.root, t.root, value, nil, nil, true)
-	//if b {
-	//	t.size--
-	//	t.root = r
-	//}
-	//return b
-	return false
+	r, b := rbDelete(t.root, t.root, value)
+	if b {
+		t.size--
+		t.root = r
+	}
+	return b
 }
 
-// ValidateRb returns whether the tree is a red-black tree which should be asserted true.
-func (t *RedBlackTree) ValidateRb() bool {
+// Validate returns whether the tree is a red-black tree which should be asserted true.
+func (t *RedBlackTree) Validate() bool {
 	if t.root == nil {
 		return true
 	}
@@ -154,6 +153,12 @@ func validateRb(node *rbTreeNode) (bool, int) {
 	if node == nil {
 		return true, 1
 	}
+	if node.left != nil && node.left.value.Compare(node.value) >= 0 {
+		return false, 0
+	}
+	if node.right != nil && node.right.value.Compare(node.value) <= 0 {
+		return false, 0
+	}
 	if getNodeColor(node) == RED && (getNodeColor(node.left) == RED || getNodeColor(node.right) == RED) {
 		return false, 0
 	}
@@ -228,202 +233,38 @@ func rbInsert(root *rbTreeNode, node *rbTreeNode, value NodeValue, parent *rbTre
 }
 
 // returns finish, hasDeleted, new root
-//func rbDelete(root *rbTreeNode, node *rbTreeNode, value NodeValue, parent *rbTreeNode, grand *rbTreeNode, left bool) (bool, bool, *rbTreeNode) {
-//	if node == nil {
-//		return true, false, root
-//	}
-//	if node.value.Compare(value) < 0 {
-//		f, _, r := rbDelete(root, node.right, value, node, parent, false)
-//		if !f {
-//			r, _, _, _ := recolorRight(r, node, parent, grand, true)
-//			return true, true, r
-//		}
-//	} else if node.value.Compare(value) > 0 {
-//		f, _, r := rbDelete(root, node.left, value, node, parent, true)
-//		if !f {
-//			r, _, _, _ := recolorLeft(r, node, parent, grand, true)
-//			return true, true, r
-//		}
-//	}
-//	if node.left == nil && node.right == nil {
-//		if left {
-//			parent.left = nil
-//		} else {
-//			parent.right = nil
-//		}
-//		return true, true, root
-//	}
-//	if node.left != nil {
-//		r, finish, d, v := recolorLeft(root, node.left, node, parent, false)
-//		node.value = v
-//		if !d {
-//			node.left = node.left.left
-//		}
-//		return finish, true, r
-//	} else {
-//		r, finish, d, v := recolorRight(root, node.right, node, parent, false)
-//		if !d {
-//			node.right = node.right.right
-//		}
-//		node.value = v
-//		return finish, true, r
-//	}
-//}
-
-//// returns new root, finish, had deleted, value
-//func recolorLeft(root *rbTreeNode, node *rbTreeNode, parent *rbTreeNode, grand *rbTreeNode, hasDeleted bool) (
-//	*rbTreeNode, bool, bool, NodeValue) {
-//	r := root
-//	var value NodeValue
-//	if node.right != nil {
-//		rr, finish, d, v := recolorLeft(r, node.right, node, parent, hasDeleted)
-//		if !d {
-//			node.right = node.right.left
-//			d = true
-//		}
-//		if finish {
-//			return rr, finish, d, v
-//		}
-//		r = rr
-//		value = v
-//		hasDeleted = d
-//	}
-//	// case 0: node has no children and its color is red
-//	if node.left == nil && node.right == nil && node.color == RED {
-//		return r, true, hasDeleted, value
-//	}
-//	// case 1: node has red left child and its color is black
-//	if node.left != nil {
-//		node.left.color = BLACK
-//		return r, true, hasDeleted, value
-//	}
-//	// case 2: node has no children and its color is black
-//	for {
-//		brother := parent.left
-//		if parent.left == node {
-//			brother = parent.right
-//		}
-//		farNephew := brother.left
-//		nearNephew := brother.right
-//		// case 2.0: skip to case 2.3
-//		if brother.color == RED {
-//			parent.color = RED
-//			brother.color = BLACK
-//			r = rbRightRotate(r, parent, grand)
-//			grand = brother
-//			brother = nearNephew
-//			continue
-//		}
-//		// case 2.1
-//		if brother.color == BLACK && getNodeColor(farNephew) == RED {
-//			parent.color, brother.color = brother.color, parent.color
-//			farNephew.color = BLACK
-//			r = rbRightRotate(r, parent, grand)
-//			return r, true, hasDeleted, value
-//		}
-//		// case 2.2: skip to case 2.1
-//		if brother.color == BLACK && getNodeColor(farNephew) == BLACK && getNodeColor(nearNephew) == RED {
-//			nearNephew.color = BLACK
-//			brother.color = RED
-//			r = rbLeftRotate(r, brother, parent)
-//			parent.left = nearNephew
-//			continue
-//		}
-//		// case 2.3
-//		if parent.color == RED && brother.color == BLACK {
-//			parent.color = BLACK
-//			brother.color = RED
-//			return r, true, hasDeleted, value
-//		}
-//		// case 2.4
-//		if parent.color == BLACK && brother.color == BLACK {
-//			brother.color = RED
-//			return r, false, hasDeleted, value
-//		}
-//		panic("unexpected")
-//	}
-//}
-//
-//func recolorRight(root *rbTreeNode, node *rbTreeNode, parent *rbTreeNode, grand *rbTreeNode, hasDeleted bool) (
-//	*rbTreeNode, bool, bool, NodeValue) {
-//	r := root
-//	var value NodeValue
-//	if node.left != nil {
-//		rr, finish, d, v := recolorRight(r, node.left, node, parent, hasDeleted)
-//		if !d {
-//			node.left = node.left.right
-//			d = true
-//		}
-//		if finish {
-//			return rr, finish, d, v
-//		}
-//		r = rr
-//		value = v
-//		hasDeleted = d
-//	}
-//	if !hasDeleted {
-//		if parent.left == node {
-//			parent.left = node.right
-//		} else {
-//			parent.right = node.right
-//		}
-//		hasDeleted = true
-//	}
-//	// case 0: node has no children and its color is red
-//	if node.left == nil && node.right == nil && node.color == RED {
-//		return r, true, hasDeleted, value
-//	}
-//	// case 1: node has red right child and its color is black
-//	if node.right != nil {
-//		node.right.color = BLACK
-//		return r, true, hasDeleted, value
-//	}
-//	// case 2: node has no children and its color is black
-//	for {
-//		brother := parent.left
-//		if parent.left == node {
-//			brother = parent.right
-//		}
-//		farNephew := brother.right
-//		nearNephew := brother.left
-//		// case 2.0: skip to case 2.3
-//		if brother.color == RED {
-//			parent.color = RED
-//			brother.color = BLACK
-//			r = rbLeftRotate(r, parent, grand)
-//			grand = brother
-//			brother = nearNephew
-//			continue
-//		}
-//		// case 2.1
-//		if brother.color == BLACK && getNodeColor(farNephew) == RED {
-//			parent.color, brother.color = brother.color, parent.color
-//			farNephew.color = BLACK
-//			r = rbLeftRotate(r, parent, grand)
-//			return r, true, hasDeleted, value
-//		}
-//		// case 2.2: skip to case 2.1
-//		if brother.color == BLACK && getNodeColor(farNephew) == BLACK && getNodeColor(nearNephew) == RED {
-//			nearNephew.color = BLACK
-//			brother.color = RED
-//			r = rbRightRotate(r, brother, parent)
-//			parent.right = nearNephew
-//			continue
-//		}
-//		// case 2.3
-//		if parent.color == RED && brother.color == BLACK {
-//			parent.color = BLACK
-//			brother.color = RED
-//			return r, true, hasDeleted, value
-//		}
-//		// case 2.4
-//		if parent.color == BLACK && brother.color == BLACK {
-//			brother.color = RED
-//			return r, false, hasDeleted, value
-//		}
-//		panic("unexpected")
-//	}
-//}
+func rbDelete(root *rbTreeNode, node *rbTreeNode, value NodeValue) (*rbTreeNode, bool) {
+	if node == nil {
+		return root, false
+	}
+	if node.value.Compare(value) < 0 {
+		return rbDelete(root, node.right, value)
+	} else if node.value.Compare(value) > 0 {
+		return rbDelete(root, node.left, value)
+	}
+	// case 0: node has no children and color is red: just delete
+	if node.left == nil && node.right == nil {
+		if node.color == RED {
+			return detachChild(root, node), true
+		} else {
+			return rbDeleteNode(root, node), true
+		}
+	}
+	// case 1: node has only one child
+	if node.left != nil && node.right == nil || node.left == nil && node.right != nil {
+		// if node has only one child, it must be red, just replace the node with its child and recolor to black
+		if node.left != nil {
+			node.left.color = BLACK
+		} else {
+			node.right.color = BLACK
+		}
+		return replaceWithChild(root, node), true
+	}
+	// case 2: node has two children
+	s := rbFindSuccessor(node)
+	node.value = s.value
+	return rbDeleteNode(root, s), true
+}
 
 func rbTraverse(root *rbTreeNode, f func(value NodeValue), order TraverseOrder) {
 	if root == nil {
@@ -458,6 +299,80 @@ func rbSearch(value NodeValue, root *rbTreeNode, lastVisited *rbTreeNode) (bool,
 		return rbSearch(value, root.left, root)
 	}
 	return rbSearch(value, root.right, root)
+}
+
+func detachChild(root, node *rbTreeNode) *rbTreeNode {
+	if node == nil {
+		return root
+	}
+	if node.parent == nil {
+		return nil
+	}
+	if node.parent.left == node {
+		node.parent.left = nil
+	} else {
+		node.parent.right = nil
+	}
+	node.parent = nil
+	return root
+}
+
+func replaceWithChild(root, node *rbTreeNode) *rbTreeNode {
+	child := node.left
+	if node.right != nil {
+		child = node.right
+	}
+	if child != nil {
+		child.parent = node.parent
+	}
+	if node.parent == nil {
+		node.left = nil
+		node.right = nil
+		return child
+	}
+	if node.parent.left == node {
+		node.parent.left = child
+	} else {
+		node.parent.right = child
+	}
+	node.parent = nil
+	node.left = nil
+	node.right = nil
+	return root
+}
+
+func getBrother(node *rbTreeNode) *rbTreeNode {
+	if node == nil {
+		return nil
+	}
+	if node.parent == nil {
+		return nil
+	}
+	if node.parent.left == node {
+		return node.parent.right
+	} else {
+		return node.parent.left
+	}
+}
+
+func getNephew(node *rbTreeNode, close bool) *rbTreeNode {
+	brother := getBrother(node)
+	if brother == nil {
+		return nil
+	}
+	if node.parent.left == node {
+		if close {
+			return brother.left
+		} else {
+			return brother.right
+		}
+	} else {
+		if close {
+			return brother.right
+		} else {
+			return brother.left
+		}
+	}
 }
 
 func getNodeColor(node *rbTreeNode) nodeColor {
@@ -511,6 +426,70 @@ func rbLeftRotate(root *rbTreeNode, node *rbTreeNode) *rbTreeNode {
 		r.parent.right = r
 	}
 	return root
+}
+
+func rbFindSuccessor(node *rbTreeNode) *rbTreeNode {
+	q := node
+	s := q.right
+	for s.left != nil {
+		q = s
+		s = s.left
+	}
+	return s
+}
+
+func rbDeleteNode(root, node *rbTreeNode) *rbTreeNode {
+	// case 0: ele has no children and it's color is red, just deleted
+	if node.left == nil && node.right == nil && node.color == RED {
+		return detachChild(root, node)
+	}
+	// case 1: ele has only right red child, just replace with child and recolor child to black
+	if node.right != nil {
+		node.right.color = BLACK
+		return replaceWithChild(root, node)
+	}
+	// else: ele has no children and its color is black
+	for q := node; q != root; {
+		r1 := rbLeftRotate
+		r2 := rbRightRotate
+		if q.parent.left == q {
+			r1 = rbRightRotate
+			r2 = rbLeftRotate
+		}
+		// case 2.0: brother is black and close nephew is red
+		if getNodeColor(getBrother(q)) == BLACK && getNodeColor(getNephew(q, true)) == RED {
+			getBrother(q).color, getNephew(q, true).color = getNephew(q, true).color, getBrother(q).color
+			root = r1(root, getBrother(q))
+			continue
+		}
+		// case 2.1: brother is black and far nephew is red
+		if getNodeColor(getBrother(q)) == BLACK && getNodeColor(getNephew(q, false)) == RED {
+			q.parent.color, getBrother(q).color = getBrother(q).color, q.parent.color
+			getNephew(q, false).color = BLACK
+			r := r2(root, q.parent)
+			return detachChild(r, node)
+		}
+		// case 2.2: brother is red
+		if getNodeColor(getBrother(q)) == RED {
+			q.parent.color = RED
+			getBrother(q).color = BLACK
+			root = r2(root, q.parent)
+			continue
+		}
+		// case 2.3: parent is red and brother is black without children
+		if getNodeColor(q.parent) == RED && getNodeColor(getBrother(q)) == BLACK {
+			q.parent.color = BLACK
+			getBrother(q).color = RED
+			return detachChild(root, node)
+		}
+		// case 2.4: parent is black, brother has two black children (including nil)
+		if getNodeColor(q.parent) == BLACK && getNodeColor(getBrother(q)) == BLACK {
+			getBrother(q).color = RED
+			// keep on
+			q = q.parent
+		}
+	}
+	return detachChild(root, node)
 }
 
 type nodeColor int
