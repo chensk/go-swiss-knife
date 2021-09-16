@@ -79,6 +79,23 @@ func TestTree(t *testing.T) {
 	t.Logf("tree: %s\n", tree.PrettyPrint())
 }
 
+func TestExpiringSet(t *testing.T) {
+	s := NewExpiringSet(1 * time.Second)
+	s.Add("123")
+	time.Sleep(200 * time.Millisecond)
+	s.Add("456")
+	time.Sleep(200 * time.Millisecond)
+	s.Add("789")
+
+	t.Logf("exists: %t %t %t", s.Exists("123"), s.Exists("456"), s.Exists("789"))
+	time.Sleep(700 * time.Millisecond)
+	t.Logf("exists: %t %t %t", s.Exists("123"), s.Exists("456"), s.Exists("789"))
+	time.Sleep(200 * time.Millisecond)
+	t.Logf("exists: %t %t %t", s.Exists("123"), s.Exists("456"), s.Exists("789"))
+	time.Sleep(200 * time.Millisecond)
+	t.Logf("exists: %t %t %t", s.Exists("123"), s.Exists("456"), s.Exists("789"))
+}
+
 func createRandomAvlTree(size int, asc bool) *BalancedBinarySearchTree {
 	input := make([]NodeValue, size)
 	for i := 0; i < size; i++ {
