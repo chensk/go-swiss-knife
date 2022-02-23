@@ -62,19 +62,23 @@ func (t *BalancedBinarySearchTree) Delete(value NodeValue) bool {
 }
 
 // Traverse traverse tree with specified order and call the function for each non-nil node.
-func (t *BalancedBinarySearchTree) Traverse(f func(value NodeValue), order TraverseOrder) {
-	avlTraverse(t.root, f, order)
+func (t *BalancedBinarySearchTree) Traverse(f func(value NodeValue) bool, order TraverseOrder) {
+	avlTraverse(t.root, func(node *avlTreeNode) bool {
+		return f(node.value)
+	}, order)
 }
 
 // String returns the inorder sequence and preorder sequence.
 func (t *BalancedBinarySearchTree) String() string {
 	inOrderResult := make([]NodeValue, 0, t.size)
 	preOrderResult := make([]NodeValue, 0, t.size)
-	t.Traverse(func(value NodeValue) {
+	t.Traverse(func(value NodeValue) bool {
 		inOrderResult = append(inOrderResult, value)
+		return true
 	}, InOrder)
-	t.Traverse(func(value NodeValue) {
+	t.Traverse(func(value NodeValue) bool {
 		preOrderResult = append(preOrderResult, value)
+		return true
 	}, PreOrder)
 	return fmt.Sprintf("inorder: %+v, preorder: %+v", inOrderResult, preOrderResult)
 }
@@ -329,23 +333,19 @@ func avlSearch(value NodeValue, root *avlTreeNode, lastVisited *avlTreeNode) (bo
 	return avlSearch(value, root.right, root)
 }
 
-func avlTraverse(root *avlTreeNode, f func(value NodeValue), order TraverseOrder) {
+func avlTraverse(root *avlTreeNode, f AvlTraverseFunc, order TraverseOrder) bool {
 	if root == nil {
-		return
+		return true
 	}
 	switch order {
 	case PreOrder:
-		f(root.value)
-		avlTraverse(root.left, f, order)
-		avlTraverse(root.right, f, order)
+		return f(root) && avlTraverse(root.left, f, order) && avlTraverse(root.right, f, order)
 	case InOrder:
-		avlTraverse(root.left, f, order)
-		f(root.value)
-		avlTraverse(root.right, f, order)
+		return avlTraverse(root.left, f, order) && f(root) && avlTraverse(root.right, f, order)
 	case PostOrder:
-		avlTraverse(root.left, f, order)
-		avlTraverse(root.right, f, order)
-		f(root.value)
+		return avlTraverse(root.left, f, order) && avlTraverse(root.right, f, order) && f(root)
+	case ReversedOrder:
+		return avlTraverse(root.right, f, order) && f(root) && avlTraverse(root.left, f, order)
 	default:
 		panic("unexpected order")
 	}
@@ -485,10 +485,17 @@ type NodeValue interface {
 type TraverseOrder int
 type BalanceFactor int
 
+type AvlTraverseFunc func(node *avlTreeNode) bool
+
 const (
+	// pre-order, parent-left-right
 	PreOrder TraverseOrder = iota
+	// in-order, left-parent-right
 	InOrder
+	// post-order, left-right-parent
 	PostOrder
+	// reversed order, right-parent-left
+	ReversedOrder
 
 	LH = 1
 	EH = 0

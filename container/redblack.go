@@ -298,41 +298,19 @@ func rbDelete(root *rbTreeNode, node *rbTreeNode, value NodeValue) (*rbTreeNode,
 	return rbDeleteNode(root, s), true
 }
 
-func rbTraverse(root *rbTreeNode, f TraverseFunc, order TraverseOrder) bool {
+func rbTraverse(root *rbTreeNode, f RbTraverseFunc, order TraverseOrder) bool {
 	if root == nil {
 		return true
 	}
 	switch order {
 	case PreOrder:
-		if !f(root) {
-			return false
-		}
-		if !rbTraverse(root.left, f, order) {
-			return false
-		}
-		if !rbTraverse(root.right, f, order) {
-			return false
-		}
+		return f(root) && rbTraverse(root.left, f, order) && rbTraverse(root.right, f, order)
 	case InOrder:
-		if !rbTraverse(root.left, f, order) {
-			return false
-		}
-		if !f(root) {
-			return false
-		}
-		if !rbTraverse(root.right, f, order) {
-			return false
-		}
+		return rbTraverse(root.left, f, order) && f(root) && rbTraverse(root.right, f, order)
 	case PostOrder:
-		if !rbTraverse(root.left, f, order) {
-			return false
-		}
-		if !rbTraverse(root.right, f, order) {
-			return false
-		}
-		if !f(root) {
-			return false
-		}
+		return rbTraverse(root.left, f, order) && rbTraverse(root.right, f, order) && !f(root)
+	case ReversedOrder:
+		return rbTraverse(root.right, f, order) && f(root) && rbTraverse(root.left, f, order)
 	default:
 		panic("unexpected order")
 	}
@@ -545,8 +523,8 @@ func rbDeleteNode(root, node *rbTreeNode) *rbTreeNode {
 
 type nodeColor int
 
-// traverse function that iterates over the tree. Traverse would stop if TraverseFunc returns false
-type TraverseFunc func(node *rbTreeNode) bool
+// traverse function that iterates over the tree. Traverse would stop if RbTraverseFunc returns false
+type RbTraverseFunc func(node *rbTreeNode) bool
 
 func (n nodeColor) String() string {
 	if n == RED {

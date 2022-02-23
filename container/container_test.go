@@ -55,16 +55,17 @@ func TestSlice(t *testing.T) {
 }
 
 func TestTree(t *testing.T) {
-	tree := createRandomAvlTree(10000, true)
-	//tree := createRandomRbTree(10000, true)
+	//tree := createRandomAvlTree(1000, true)
+	tree := createRandomRbTree(10000, true)
 	t.Logf("height: %d, size: %d, validate: %t\n", tree.Height(), tree.Size(), tree.Validate())
 	//t.Logf("tree: %s\n", tree.PrettyPrint())
 	r := rand.NewSource(time.Now().UnixNano())
 	rnd := rand.New(r)
 	for tree.Size() > 0 {
 		inOrders := make([]NodeValue, 0, tree.Size())
-		tree.Traverse(func(value NodeValue) {
+		tree.Traverse(func(value NodeValue) bool {
 			inOrders = append(inOrders, value)
+			return true
 		}, InOrder)
 		if len(inOrders) != tree.Size() {
 			panic("unexpected")
@@ -84,7 +85,7 @@ func TestPop(t *testing.T) {
 	t.Logf("height: %d, size: %d, validate: %t\n", tree.Height(), tree.Size(), tree.Validate())
 	for i := 0; i < 100; i++ {
 		v := tree.Pop(func(value NodeValue) bool {
-			return value.(Element).Compare(Element(50)) > 0
+			return value.(Element).Compare(Element(50)) > 0 && value.(Element).Compare(Element(450)) < 0
 		}, true)
 		t.Logf("pop %v\n", v)
 		if !tree.Validate() {
