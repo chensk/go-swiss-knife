@@ -139,6 +139,44 @@ func (t *RedBlackTree) Exist(value NodeValue) bool {
 	return found
 }
 
+// PopMin pops the minimum value. If delete flag is set, delete the node.
+func (t *RedBlackTree) PopMin(delete bool) NodeValue {
+	if t.root == nil {
+		return nil
+	}
+	var cur *rbTreeNode
+	for cur = t.root; cur.left != nil; cur = cur.left {
+	}
+	v := cur.value
+	if delete {
+		r, b := rbDelete(t.root, cur, v)
+		if b {
+			t.root = r
+			t.size--
+		}
+	}
+	return v
+}
+
+// PopMax pops the maximum value. If delete flag is set, delete the node.
+func (t *RedBlackTree) PopMax(delete bool) NodeValue {
+	if t.root == nil {
+		return nil
+	}
+	var cur *rbTreeNode
+	for cur = t.root; cur.right != nil; cur = cur.right {
+	}
+	v := cur.value
+	if delete {
+		r, b := rbDelete(t.root, cur, v)
+		if b {
+			t.root = r
+			t.size--
+		}
+	}
+	return v
+}
+
 func rbHeight(root *rbTreeNode) int {
 	if root == nil {
 		return 0

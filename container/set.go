@@ -2,7 +2,6 @@ package container
 
 import (
 	"container/heap"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -52,7 +51,6 @@ func recycle(s *ExpiringSet) {
 			for s.elements.Peek() != nil && s.elements.Peek().deadline.Before(now) {
 				p := heap.Pop(&s.elements).(ItemValue)
 				delete(s.existence, p.value)
-				fmt.Printf("poping %s, deadline: %s, time: %s\n", p.value, p.deadline, now)
 			}
 			return s.elements.Peek()
 		}()
