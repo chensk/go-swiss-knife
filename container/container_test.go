@@ -83,13 +83,15 @@ func TestPop(t *testing.T) {
 	tree := createRandomRbTree(1000, true)
 	t.Logf("height: %d, size: %d, validate: %t\n", tree.Height(), tree.Size(), tree.Validate())
 	for i := 0; i < 100; i++ {
-		v := tree.PopMin(true)
+		v := tree.Pop(func(value NodeValue) bool {
+			return value.(Element).Compare(Element(50)) > 0
+		}, true)
 		t.Logf("pop %v\n", v)
 		if !tree.Validate() {
 			t.Fatalf("after deleted %d, tree is not valid, tree: %s\n", i, tree.PrettyPrint())
 		}
 	}
-	t.Logf("tree: %s\n", tree.PrettyPrint())
+	t.Logf("tree: %s\n size: %d\n", tree.PrettyPrint(), tree.Size())
 }
 
 func TestExpiringSet(t *testing.T) {

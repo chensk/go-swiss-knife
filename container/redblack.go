@@ -78,19 +78,23 @@ func (t *RedBlackTree) Validate() bool {
 }
 
 // Traverse traverse tree with specified order and call the function for each non-nil node.
-func (t *RedBlackTree) Traverse(f func(value NodeValue), order TraverseOrder) {
-	rbTraverse(t.root, f, order)
+func (t *RedBlackTree) Traverse(f func(value NodeValue) bool, order TraverseOrder) {
+	rbTraverse(t.root, func(node *rbTreeNode) bool {
+		return f(node.value)
+	}, order)
 }
 
 // String returns the inorder sequence and preorder sequence.
 func (t *RedBlackTree) String() string {
 	inOrderResult := make([]NodeValue, 0, t.size)
 	preOrderResult := make([]NodeValue, 0, t.size)
-	t.Traverse(func(value NodeValue) {
+	t.Traverse(func(value NodeValue) bool {
 		inOrderResult = append(inOrderResult, value)
+		return true
 	}, InOrder)
-	t.Traverse(func(value NodeValue) {
+	t.Traverse(func(value NodeValue) bool {
 		preOrderResult = append(preOrderResult, value)
+		return true
 	}, PreOrder)
 	return fmt.Sprintf("inorder: %+v, preorder: %+v", inOrderResult, preOrderResult)
 }
@@ -139,36 +143,26 @@ func (t *RedBlackTree) Exist(value NodeValue) bool {
 	return found
 }
 
-// PopMin pops the minimum value. If delete flag is set, delete the node.
-func (t *RedBlackTree) PopMin(delete bool) NodeValue {
+// Pop pops the minimum value. If delete flag is set, delete the node.
+// extra filter can be applied to filter value.
+func (t *RedBlackTree) Pop(filter func(NodeValue) bool, delete bool) NodeValue {
 	if t.root == nil {
 		return nil
 	}
-	var cur *rbTreeNode
-	for cur = t.root; cur.left != nil; cur = cur.left {
-	}
-	v := cur.value
-	if delete {
-		r, b := rbDelete(t.root, cur, v)
-		if b {
-			t.root = r
-			t.size--
+	var found *rbTreeNode
+	rbTraverse(t.root, func(node *rbTreeNode) bool {
+		if filter != nil && filter(node.value) {
+			found = node
+			return false
 		}
-	}
-	return v
-}
-
-// PopMax pops the maximum value. If delete flag is set, delete the node.
-func (t *RedBlackTree) PopMax(delete bool) NodeValue {
-	if t.root == nil {
+		return true
+	}, InOrder)
+	if found == nil {
 		return nil
 	}
-	var cur *rbTreeNode
-	for cur = t.root; cur.right != nil; cur = cur.right {
-	}
-	v := cur.value
+	v := found.value
 	if delete {
-		r, b := rbDelete(t.root, cur, v)
+		r, b := rbDelete(t.root, found, v)
 		if b {
 			t.root = r
 			t.size--
@@ -304,26 +298,45 @@ func rbDelete(root *rbTreeNode, node *rbTreeNode, value NodeValue) (*rbTreeNode,
 	return rbDeleteNode(root, s), true
 }
 
-func rbTraverse(root *rbTreeNode, f func(value NodeValue), order TraverseOrder) {
+func rbTraverse(root *rbTreeNode, f TraverseFunc, order TraverseOrder) bool {
 	if root == nil {
-		return
+		return true
 	}
 	switch order {
 	case PreOrder:
-		f(root.value)
-		rbTraverse(root.left, f, order)
-		rbTraverse(root.right, f, order)
+		if !f(root) {
+			return false
+		}
+		if !rbTraverse(root.left, f, order) {
+			return false
+		}
+		if !rbTraverse(root.right, f, order) {
+			return false
+		}
 	case InOrder:
-		rbTraverse(root.left, f, order)
-		f(root.value)
-		rbTraverse(root.right, f, order)
+		if !rbTraverse(root.left, f, order) {
+			return false
+		}
+		if !f(root) {
+			return false
+		}
+		if !rbTraverse(root.right, f, order) {
+			return false
+		}
 	case PostOrder:
-		rbTraverse(root.left, f, order)
-		rbTraverse(root.right, f, order)
-		f(root.value)
+		if !rbTraverse(root.left, f, order) {
+			return false
+		}
+		if !rbTraverse(root.right, f, order) {
+			return false
+		}
+		if !f(root) {
+			return false
+		}
 	default:
 		panic("unexpected order")
 	}
+	return true
 }
 
 func rbSearch(value NodeValue, root *rbTreeNode, lastVisited *rbTreeNode) (bool, *rbTreeNode, *rbTreeNode) {
@@ -531,6 +544,9 @@ func rbDeleteNode(root, node *rbTreeNode) *rbTreeNode {
 }
 
 type nodeColor int
+
+// traverse function that iterates over the tree. Traverse would stop if TraverseFunc returns false
+type TraverseFunc func(node *rbTreeNode) bool
 
 func (n nodeColor) String() string {
 	if n == RED {
