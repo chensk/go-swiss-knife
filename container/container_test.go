@@ -152,32 +152,23 @@ func createRandomRbTree(size int) *RedBlackTree {
 	for i := 0; i < size; i++ {
 		input[i] = Element(ii[i])
 	}
-	fmt.Printf("inputs: %v\n", input)
 	tree := NewRedBlackTree(input)
 	return tree
 }
 
-func TestCoral(t *testing.T) {
-	tree := createRandomRbTree(0)
-	for i := 0; i < 8; i++ {
-		tree.Insert(Element(i))
-		if !tree.Validate() {
-			t.Fatalf("failed after insert %d, tree: %v", i, tree.PrettyPrint())
+func TestIterator(t *testing.T) {
+	tree := createRandomRbTree(1000)
+	iter, err := tree.Iterator(Element(50), Element(150), PostOrder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for ele := iter.Next(); ele != nil; ele = iter.Next() {
+		if ele.Compare(Element(120)) > 0 {
+			iter.Close()
 		}
-		t.Logf("inserting %d, tree: %v", i, tree.PrettyPrint())
+		t.Logf("get %v\n", ele)
+		time.Sleep(100 * time.Millisecond)
 	}
-	tree.Insert(Element(8))
-	t.Logf("inserting %d, tree: %v", 8, tree.PrettyPrint())
-	tree.Insert(Element(10))
-	if !tree.Validate() {
-		t.Fatalf("failed after insert %d, tree: %v", 10, tree.PrettyPrint())
-	}
-	t.Logf("inserting %d, tree: %v", 10, tree.PrettyPrint())
-	tree.Insert(Element(9))
-	if !tree.Validate() {
-		t.Fatalf("failed after insert %d, tree: %v", 9, tree.PrettyPrint())
-	}
-	t.Logf("inserting %d, tree: %v", 9, tree.PrettyPrint())
 }
 
 type Element int

@@ -1,6 +1,7 @@
 package container
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -11,6 +12,11 @@ import (
 type RedBlackTree struct {
 	root *rbTreeNode
 	size int
+}
+
+type TreeIterator struct {
+	ch     chan NodeValue
+	closed chan struct{}
 }
 
 type rbTreeNode struct {
@@ -233,6 +239,45 @@ func (t *RedBlackTree) PopMax(atMost NodeValue, delete bool) NodeValue {
 	return v
 }
 
+func (t *RedBlackTree) Iterator(from NodeValue, to NodeValue, order TraverseOrder) (*TreeIterator, error) {
+	if from.Compare(to) > 0 {
+		return nil, errors.New("invalid bound")
+	}
+	ch := make(chan NodeValue)
+	closed := make(chan struct{})
+	go func() {
+		t.Traverse(func(value NodeValue) bool {
+			if value.Compare(from) >= 0 && value.Compare(to) <= 0 {
+				select {
+				case <-closed:
+					return false
+				case ch <- value:
+				}
+			}
+			switch order {
+			case PreOrder, PostOrder:
+				return true
+			case InOrder:
+				return value.Compare(to) <= 0
+			case ReversedOrder:
+				return value.Compare(from) >= 0
+			default:
+				return false
+			}
+		}, order)
+		select {
+		case <-closed:
+			return
+		default:
+			close(ch)
+		}
+	}()
+	return &TreeIterator{
+		ch:     ch,
+		closed: closed,
+	}, nil
+}
+
 func rbHeight(root *rbTreeNode) int {
 	if root == nil {
 		return 0
@@ -347,7 +392,7 @@ func rbTraverse(root *rbTreeNode, f RbTraverseFunc, order TraverseOrder) bool {
 	case InOrder:
 		return rbTraverse(root.left, f, order) && f(root) && rbTraverse(root.right, f, order)
 	case PostOrder:
-		return rbTraverse(root.left, f, order) && rbTraverse(root.right, f, order) && !f(root)
+		return rbTraverse(root.left, f, order) && rbTraverse(root.right, f, order) && f(root)
 	case ReversedOrder:
 		return rbTraverse(root.right, f, order) && f(root) && rbTraverse(root.left, f, order)
 	default:
@@ -621,6 +666,28 @@ func (n nodeColor) String() string {
 		return "red"
 	} else {
 		return "black"
+	}
+}
+
+func (iter TreeIterator) Next() NodeValue {
+	select {
+	case v, ok := <-iter.ch:
+		if !ok {
+			return nil
+		}
+		return v
+	case <-iter.closed:
+		return nil
+	}
+}
+
+func (iter TreeIterator) Close() {
+	select {
+	case <-iter.closed:
+		return
+	default:
+		close(iter.closed)
+		close(iter.ch)
 	}
 }
 
