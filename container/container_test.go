@@ -1,8 +1,10 @@
 package container
 
 import (
+	"fmt"
 	"math/rand"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -55,9 +57,16 @@ func TestSlice(t *testing.T) {
 }
 
 func TestTree(t *testing.T) {
+	t1 := time.Now()
 	//tree := createRandomAvlTree(1000, true)
-	tree := createRandomRbTree(10000, true)
+	tree := createRandomRbTree(10000)
+	t.Logf("create: %v\n", time.Now().Sub(t1))
 	t.Logf("height: %d, size: %d, validate: %t\n", tree.Height(), tree.Size(), tree.Validate())
+	t1 = time.Now()
+	t.Logf("stats: %v\n", time.Now().Sub(t1))
+	if !tree.Validate() {
+		t.Fatalf("tree invalid: %v\n", tree.PrettyPrint())
+	}
 	//t.Logf("tree: %s\n", tree.PrettyPrint())
 	r := rand.NewSource(time.Now().UnixNano())
 	rnd := rand.New(r)
@@ -75,18 +84,15 @@ func TestTree(t *testing.T) {
 		if !tree.Validate() {
 			t.Fatalf("after deleted %d, tree is not valid, tree: %s\n", i, tree.PrettyPrint())
 		}
-		t.Logf("succesfully deleted %d, tree: %d\n", i, tree.Size())
 	}
 	t.Logf("tree: %s\n", tree.PrettyPrint())
 }
 
 func TestPop(t *testing.T) {
-	tree := createRandomRbTree(1000, true)
+	tree := createRandomRbTree(0)
 	t.Logf("height: %d, size: %d, validate: %t\n", tree.Height(), tree.Size(), tree.Validate())
 	for i := 0; i < 100; i++ {
-		v := tree.Pop(func(value NodeValue) bool {
-			return value.(Element).Compare(Element(50)) > 0 && value.(Element).Compare(Element(450)) < 0
-		}, true)
+		v := tree.PopMin(Element(1000), true)
 		t.Logf("pop %v\n", v)
 		if !tree.Validate() {
 			t.Fatalf("after deleted %d, tree is not valid, tree: %s\n", i, tree.PrettyPrint())
@@ -113,14 +119,19 @@ func TestExpiringSet(t *testing.T) {
 }
 
 func createRandomAvlTree(size int, asc bool) *BalancedBinarySearchTree {
+	rand.Seed(time.Now().UnixNano())
 	input := make([]NodeValue, size)
+	ii := make([]int, 0, size)
 	for i := 0; i < size; i++ {
-		if asc {
-			input[i] = Element(i)
-		} else {
-			input[i] = Element(size - i)
-		}
+		ii = append(ii, i)
 	}
+	rand.Shuffle(len(ii), func(i, j int) {
+		ii[i], ii[j] = ii[j], ii[i]
+	})
+	for i := 0; i < size; i++ {
+		input[i] = Element(ii[i])
+	}
+	fmt.Printf("inputs: %v\n", input)
 	tree, err := NewBinarySearchTree(input)
 	if err != nil {
 		panic(err)
@@ -128,20 +139,48 @@ func createRandomAvlTree(size int, asc bool) *BalancedBinarySearchTree {
 	return tree
 }
 
-func createRandomRbTree(size int, asc bool) *RedBlackTree {
+func createRandomRbTree(size int) *RedBlackTree {
+	rand.Seed(time.Now().UnixNano())
 	input := make([]NodeValue, size)
+	ii := make([]int, 0, size)
 	for i := 0; i < size; i++ {
-		if asc {
-			input[i] = Element(i)
-		} else {
-			input[i] = Element(size - i)
-		}
+		ii = append(ii, i)
 	}
+	rand.Shuffle(len(ii), func(i, j int) {
+		ii[i], ii[j] = ii[j], ii[i]
+	})
+	for i := 0; i < size; i++ {
+		input[i] = Element(ii[i])
+	}
+	fmt.Printf("inputs: %v\n", input)
 	tree, err := NewRedBlackTree(input)
 	if err != nil {
 		panic(err)
 	}
 	return tree
+}
+
+func TestCoral(t *testing.T) {
+	tree := createRandomRbTree(0)
+	for i := 0; i < 8; i++ {
+		tree.Insert(Element(i))
+		if !tree.Validate() {
+			t.Fatalf("failed after insert %d, tree: %v", i, tree.PrettyPrint())
+		}
+		t.Logf("inserting %d, tree: %v", i, tree.PrettyPrint())
+	}
+	tree.Insert(Element(8))
+	t.Logf("inserting %d, tree: %v", 8, tree.PrettyPrint())
+	tree.Insert(Element(10))
+	if !tree.Validate() {
+		t.Fatalf("failed after insert %d, tree: %v", 10, tree.PrettyPrint())
+	}
+	t.Logf("inserting %d, tree: %v", 10, tree.PrettyPrint())
+	tree.Insert(Element(9))
+	if !tree.Validate() {
+		t.Fatalf("failed after insert %d, tree: %v", 9, tree.PrettyPrint())
+	}
+	t.Logf("inserting %d, tree: %v", 9, tree.PrettyPrint())
 }
 
 type Element int
@@ -152,4 +191,52 @@ func (e Element) Compare(value NodeValue) int {
 
 func (e Element) String() string {
 	return strconv.Itoa(int(e))
+}
+
+// coral obj, 40B in size
+type CoralObj struct {
+	// for lru: last accessed time stamp
+	// todo: for lfu
+	collectFlag int32
+	otype       Otype
+	// if otype is OBJ_STRING_RAW, ptr is byte slice storing the value itself
+	// if otype is OBJ_STRING_PERSISTENCE, ptr is pointer to CoralStringPersistence
+	ptr interface{}
+	key string
+}
+
+type Otype int8
+
+const (
+	OBJ_STRING_RAW Otype = 1 << iota
+	OBJ_STRING_PERSISTENCE
+)
+
+func (o *CoralObj) Compare(value NodeValue) int {
+	c1 := value.(*CoralObj)
+	ret := int(o.collectFlag - c1.collectFlag)
+	if ret != 0 {
+		return ret
+	}
+	return strings.Compare(o.key, c1.key)
+}
+
+func (o *CoralObj) String() string {
+	return o.key
+}
+
+func (o *CoralObj) Size() int64 {
+	switch o.otype {
+	case OBJ_STRING_PERSISTENCE:
+		return o.ptr.(*CoralStringPersistence).size
+	case OBJ_STRING_RAW:
+		return int64(len(o.ptr.([]byte)))
+	default:
+		panic("unexpected object type")
+	}
+}
+
+type CoralStringPersistence struct {
+	path string
+	size int64
 }

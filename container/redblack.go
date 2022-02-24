@@ -46,7 +46,7 @@ func (t *RedBlackTree) Size() int {
 
 // Insert inserts a new node and keeps the tree an red-black tree. It should take O(logN) time.
 func (t *RedBlackTree) Insert(value NodeValue) {
-	ok, _, r := rbInsert(t.root, t.root, value, nil, true)
+	ok, r := rbInsert(t.root, value)
 	if ok {
 		t.size++
 		t.root = r
@@ -143,20 +143,82 @@ func (t *RedBlackTree) Exist(value NodeValue) bool {
 	return found
 }
 
-// Pop pops the minimum value. If delete flag is set, delete the node.
-// extra filter can be applied to filter value.
-func (t *RedBlackTree) Pop(filter func(NodeValue) bool, delete bool) NodeValue {
+// PopMin pops the minimum value. If delete flag is set, delete the node.
+// If atLeast is not nil, pops the minimum value which is larger than that.
+func (t *RedBlackTree) PopMin(atLeast NodeValue, delete bool) NodeValue {
 	if t.root == nil {
 		return nil
 	}
 	var found *rbTreeNode
-	rbTraverse(t.root, func(node *rbTreeNode) bool {
-		if filter != nil && filter(node.value) {
+	if atLeast == nil {
+		rbTraverse(t.root, func(node *rbTreeNode) bool {
 			found = node
 			return false
+		}, InOrder)
+	} else {
+		ok, node, lastVisited := rbSearch(atLeast, t.root, nil)
+		if ok {
+			found = node
+		} else {
+			p := lastVisited
+			if p.value.Compare(atLeast) < 0 {
+				for p.parent != nil {
+					if p.parent.left == p {
+						found = p.parent
+						break
+					}
+					p = p.parent
+				}
+			} else {
+				found = lastVisited
+			}
 		}
-		return true
-	}, InOrder)
+	}
+	if found == nil {
+		return nil
+	}
+	v := found.value
+	if delete {
+		r, b := rbDelete(t.root, found, v)
+		if b {
+			t.root = r
+			t.size--
+		}
+	}
+	return v
+}
+
+// PopMax pops the maximum value. If delete flag is set, delete the node.
+// If atMost is not nil, pops the maximum value which is less than that.
+func (t *RedBlackTree) PopMax(atMost NodeValue, delete bool) NodeValue {
+	if t.root == nil {
+		return nil
+	}
+	var found *rbTreeNode
+	if atMost == nil {
+		rbTraverse(t.root, func(node *rbTreeNode) bool {
+			found = node
+			return false
+		}, ReversedOrder)
+	} else {
+		ok, node, lastVisited := rbSearch(atMost, t.root, nil)
+		if ok {
+			found = node
+		} else {
+			p := lastVisited
+			if p.value.Compare(atMost) > 0 {
+				for p.parent != nil {
+					if p.parent.right == p {
+						found = p.parent
+						break
+					}
+					p = p.parent
+				}
+			} else {
+				found = lastVisited
+			}
+		}
+	}
 	if found == nil {
 		return nil
 	}
@@ -208,60 +270,37 @@ func validateRb(node *rbTreeNode) (bool, int) {
 	return false, 0
 }
 
-func rbInsert(root *rbTreeNode, node *rbTreeNode, value NodeValue, parent *rbTreeNode, left bool) (bool, bool, *rbTreeNode) {
+func rbInsert(root *rbTreeNode, value NodeValue) (bool, *rbTreeNode) {
 	if root == nil {
-		return true, true, &rbTreeNode{value: value, color: BLACK}
-	}
-	if node == nil {
-		ele := &rbTreeNode{value: value, color: RED, parent: parent}
-		if left {
-			parent.left = ele
-		} else {
-			parent.right = ele
-		}
-		return true, false, root
-	}
-	if node.value.Compare(value) == 0 {
-		return false, true, root
-	}
-	var ok, finish bool
-	var r *rbTreeNode
-	if node.value.Compare(value) > 0 {
-		ok, finish, r = rbInsert(root, node.left, value, node, true)
-	} else {
-		ok, finish, r = rbInsert(root, node.right, value, node, false)
+		return true, &rbTreeNode{value: value, color: BLACK}
 	}
 
-	if !ok {
-		return false, true, root
-	} else {
-		if finish || node.color == BLACK || parent == nil {
-			return true, finish, r
-		}
-		uncle := parent.left
-		if left {
-			uncle = parent.right
-		}
-		if getNodeColor(uncle) == BLACK {
-			parent.color = RED
-			node.color = BLACK
-			var rr *rbTreeNode
-			if left {
-				rr = rbRightRotate(root, parent)
-			} else {
-				rr = rbLeftRotate(root, parent)
+	var cur *rbTreeNode = root
+	for cur = root; cur != nil; {
+		ret := cur.value.Compare(value)
+		// duplicate
+		if ret == 0 {
+			return false, root
+		} else if ret > 0 {
+			if cur.left == nil {
+				cur.left = &rbTreeNode{value: value, color: RED, parent: cur}
+				cur = cur.left
+				break
 			}
-			return true, true, rr
+			cur = cur.left
 		} else {
-			node.color = BLACK
-			parent.color = RED
-
-			if uncle != nil {
-				uncle.color = BLACK
+			if cur.right == nil {
+				cur.right = &rbTreeNode{value: value, color: RED, parent: cur}
+				cur = cur.right
+				break
 			}
-			return true, false, r
+			cur = cur.right
 		}
 	}
+	if cur == nil {
+		return false, root
+	}
+	return true, rbInsertAdjust(root, cur)
 }
 
 // returns finish, hasDeleted, new root
@@ -317,17 +356,18 @@ func rbTraverse(root *rbTreeNode, f RbTraverseFunc, order TraverseOrder) bool {
 	return true
 }
 
-func rbSearch(value NodeValue, root *rbTreeNode, lastVisited *rbTreeNode) (bool, *rbTreeNode, *rbTreeNode) {
-	if root == nil {
+// search value in red-black tree, returns whether found, the found node if exists, and lastVisited node
+func rbSearch(value NodeValue, node *rbTreeNode, lastVisited *rbTreeNode) (bool, *rbTreeNode, *rbTreeNode) {
+	if node == nil {
 		return false, nil, lastVisited
 	}
-	if root.value.Compare(value) == 0 {
-		return true, root, lastVisited
+	if node.value.Compare(value) == 0 {
+		return true, node, lastVisited
 	}
-	if root.value.Compare(value) > 0 {
-		return rbSearch(value, root.left, root)
+	if node.value.Compare(value) > 0 {
+		return rbSearch(value, node.left, node)
 	}
-	return rbSearch(value, root.right, root)
+	return rbSearch(value, node.right, node)
 }
 
 func detachChild(root, node *rbTreeNode) *rbTreeNode {
@@ -404,6 +444,17 @@ func getNephew(node *rbTreeNode, close bool) *rbTreeNode {
 	}
 }
 
+func getUncle(node *rbTreeNode) *rbTreeNode {
+	if node == nil || node.parent == nil || node.parent.parent == nil {
+		return nil
+	}
+	if node.parent == node.parent.parent.left {
+		return node.parent.parent.right
+	} else {
+		return node.parent.parent.left
+	}
+}
+
 func getNodeColor(node *rbTreeNode) nodeColor {
 	if node == nil {
 		return BLACK
@@ -465,6 +516,45 @@ func rbFindSuccessor(node *rbTreeNode) *rbTreeNode {
 		s = s.left
 	}
 	return s
+}
+
+// adjust tree to keep red-black tree and return the new root
+func rbInsertAdjust(root, node *rbTreeNode) *rbTreeNode {
+	if node.parent == nil {
+		// always set color of root as black
+		node.color = BLACK
+		return root
+	}
+	// case 0: parent is black, just return
+	if getNodeColor(node.parent) == BLACK {
+		return root
+	}
+	// node that parent color is red, so grand parent must exist
+	uncle := getUncle(node)
+	// case 1: uncle is red
+	if getNodeColor(uncle) == RED {
+		uncle.color = BLACK
+		node.parent.color = BLACK
+		node.parent.parent.color = RED
+		return rbInsertAdjust(root, node.parent.parent)
+	} else {
+		// case 2: uncle is black which is nil actually
+		// first make sure node and parent the same side
+		grandParent := node.parent.parent
+		if node == node.parent.left && node.parent == grandParent.right {
+			root = rbRightRotate(root, node.parent)
+		} else if node == node.parent.right && node.parent == grandParent.left {
+			root = rbLeftRotate(root, node.parent)
+		}
+		if getNodeColor(grandParent.left) == RED {
+			grandParent.color, grandParent.left.color = grandParent.left.color, grandParent.color
+			root = rbRightRotate(root, grandParent)
+		} else {
+			grandParent.color, grandParent.right.color = grandParent.right.color, grandParent.color
+			root = rbLeftRotate(root, grandParent)
+		}
+		return root
+	}
 }
 
 func rbDeleteNode(root, node *rbTreeNode) *rbTreeNode {
