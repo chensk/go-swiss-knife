@@ -248,6 +248,13 @@ func (t *RedBlackTree) Iterator(from NodeValue, to NodeValue, order TraverseOrde
 	go func() {
 		t.Traverse(func(value NodeValue) bool {
 			if (from == nil || value.Compare(from) >= 0) && (to == nil || value.Compare(to) <= 0) {
+				// double check closed channel to prevent nil panic
+				select {
+				case <-closed:
+					return false
+				default:
+				}
+
 				select {
 				case <-closed:
 					return false
@@ -269,6 +276,7 @@ func (t *RedBlackTree) Iterator(from NodeValue, to NodeValue, order TraverseOrde
 		case <-closed:
 			return
 		default:
+			close(closed)
 			close(ch)
 		}
 	}()
@@ -688,6 +696,15 @@ func (iter TreeIterator) Close() {
 	default:
 		close(iter.closed)
 		close(iter.ch)
+	}
+}
+
+func (iter TreeIterator) HasNext() bool {
+	select {
+	case <-iter.closed:
+		return false
+	default:
+		return true
 	}
 }
 

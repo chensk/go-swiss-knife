@@ -157,13 +157,17 @@ func createRandomRbTree(size int) *RedBlackTree {
 }
 
 func TestIterator(t *testing.T) {
-	tree := createRandomRbTree(1000)
-	iter, err := tree.Iterator(nil, nil, InOrder)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for ele := iter.Next(); ele != nil; ele = iter.Next() {
-		t.Logf("get %v\n", ele)
+	for i := 0; i < 1000; i++ {
+		tree := createRandomRbTree(1000)
+		iter, err := tree.Iterator(Element(654), Element(790), InOrder)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for ele := iter.Next(); iter.HasNext(); ele = iter.Next() {
+			if ele.Compare(Element(700)) > 0 {
+				iter.Close()
+			}
+		}
 	}
 }
 
