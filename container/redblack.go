@@ -240,14 +240,14 @@ func (t *RedBlackTree) PopMax(atMost NodeValue, delete bool) NodeValue {
 }
 
 func (t *RedBlackTree) Iterator(from NodeValue, to NodeValue, order TraverseOrder) (*TreeIterator, error) {
-	if from.Compare(to) > 0 {
+	if from != nil && to != nil && from.Compare(to) > 0 {
 		return nil, errors.New("invalid bound")
 	}
 	ch := make(chan NodeValue)
 	closed := make(chan struct{})
 	go func() {
 		t.Traverse(func(value NodeValue) bool {
-			if value.Compare(from) >= 0 && value.Compare(to) <= 0 {
+			if (from == nil || value.Compare(from) >= 0) && (to == nil || value.Compare(to) <= 0) {
 				select {
 				case <-closed:
 					return false
@@ -258,9 +258,9 @@ func (t *RedBlackTree) Iterator(from NodeValue, to NodeValue, order TraverseOrde
 			case PreOrder, PostOrder:
 				return true
 			case InOrder:
-				return value.Compare(to) <= 0
+				return to == nil || value.Compare(to) <= 0
 			case ReversedOrder:
-				return value.Compare(from) >= 0
+				return from == nil || value.Compare(from) >= 0
 			default:
 				return false
 			}
