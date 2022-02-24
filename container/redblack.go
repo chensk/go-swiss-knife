@@ -22,16 +22,16 @@ type rbTreeNode struct {
 }
 
 // NewRedBlackTree creates red-black tree from slice.
-func NewRedBlackTree(values []NodeValue) (*RedBlackTree, error) {
+func NewRedBlackTree(values []NodeValue) *RedBlackTree {
 	tree := &RedBlackTree{}
 	if len(values) == 0 {
-		return tree, nil
+		return tree
 	}
 
 	for _, v := range values {
 		tree.Insert(v)
 	}
-	return tree, nil
+	return tree
 }
 
 // Height returns height of tree.

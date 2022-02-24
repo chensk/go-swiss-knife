@@ -153,10 +153,7 @@ func createRandomRbTree(size int) *RedBlackTree {
 		input[i] = Element(ii[i])
 	}
 	fmt.Printf("inputs: %v\n", input)
-	tree, err := NewRedBlackTree(input)
-	if err != nil {
-		panic(err)
-	}
+	tree := NewRedBlackTree(input)
 	return tree
 }
 
