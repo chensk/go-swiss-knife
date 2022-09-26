@@ -473,30 +473,9 @@ type avlTreeNode struct {
 	bf    int
 }
 
-// NodeValue represents the element type storing in tree.
-type NodeValue interface {
-	// Compare method compares with another NodeValue and return 1 if greater, 0 if equal, -1 if less.
-	Compare(value NodeValue) int
-
-	// NodeValue extends fmt.Stringer whose String() method would return formatted string.
-	fmt.Stringer
-}
-
-type TraverseOrder int
-type BalanceFactor int
-
 type AvlTraverseFunc func(node *avlTreeNode) bool
 
 const (
-	// pre-order, parent-left-right
-	PreOrder TraverseOrder = iota
-	// in-order, left-parent-right
-	InOrder
-	// post-order, left-right-parent
-	PostOrder
-	// reversed order, right-parent-left
-	ReversedOrder
-
 	LH = 1
 	EH = 0
 	RH = -1

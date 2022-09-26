@@ -14,11 +14,6 @@ type RedBlackTree struct {
 	size int
 }
 
-type TreeIterator struct {
-	ch     chan NodeValue
-	closed chan struct{}
-}
-
 type rbTreeNode struct {
 	value  NodeValue
 	parent *rbTreeNode
@@ -40,19 +35,17 @@ func NewRedBlackTree(values []NodeValue) *RedBlackTree {
 	return tree
 }
 
-// Height returns height of tree.
 func (t *RedBlackTree) Height() int {
 	return rbHeight(t.root)
 }
 
-// Size returns size of tree.
 func (t *RedBlackTree) Size() int {
 	return t.size
 }
 
 // Insert inserts a new node and keeps the tree an red-black tree. It should take O(logN) time.
 func (t *RedBlackTree) Insert(value NodeValue) {
-	ok, r := rbInsert(t.root, value)
+	ok, r, _ := rbInsert(t.root, value)
 	if ok {
 		t.size++
 		t.root = r
@@ -62,7 +55,7 @@ func (t *RedBlackTree) Insert(value NodeValue) {
 
 // Delete deletes specified node and keeps the tree an red-black tree. It should take O(logN) time.
 func (t *RedBlackTree) Delete(value NodeValue) bool {
-	r, b := rbDelete(t.root, t.root, value)
+	r, _, b := rbDelete(t.root, t.root, value)
 	if b {
 		t.size--
 		t.root = r
@@ -185,7 +178,7 @@ func (t *RedBlackTree) PopMin(atLeast NodeValue, delete bool) NodeValue {
 	}
 	v := found.value
 	if delete {
-		r, b := rbDelete(t.root, found, v)
+		r, _, b := rbDelete(t.root, found, v)
 		if b {
 			t.root = r
 			t.size--
@@ -230,7 +223,7 @@ func (t *RedBlackTree) PopMax(atMost NodeValue, delete bool) NodeValue {
 	}
 	v := found.value
 	if delete {
-		r, b := rbDelete(t.root, found, v)
+		r, _, b := rbDelete(t.root, found, v)
 		if b {
 			t.root = r
 			t.size--
@@ -323,9 +316,10 @@ func validateRb(node *rbTreeNode) (bool, int) {
 	return false, 0
 }
 
-func rbInsert(root *rbTreeNode, value NodeValue) (bool, *rbTreeNode) {
+func rbInsert(root *rbTreeNode, value NodeValue) (bool, *rbTreeNode, *rbTreeNode) {
 	if root == nil {
-		return true, &rbTreeNode{value: value, color: BLACK}
+		inserted := &rbTreeNode{value: value, color: BLACK}
+		return true, inserted, inserted
 	}
 
 	var cur *rbTreeNode = root
@@ -333,7 +327,7 @@ func rbInsert(root *rbTreeNode, value NodeValue) (bool, *rbTreeNode) {
 		ret := cur.value.Compare(value)
 		// duplicate
 		if ret == 0 {
-			return false, root
+			return false, root, nil
 		} else if ret > 0 {
 			if cur.left == nil {
 				cur.left = &rbTreeNode{value: value, color: RED, parent: cur}
@@ -351,15 +345,15 @@ func rbInsert(root *rbTreeNode, value NodeValue) (bool, *rbTreeNode) {
 		}
 	}
 	if cur == nil {
-		return false, root
+		return false, root, nil
 	}
-	return true, rbInsertAdjust(root, cur)
+	return true, rbInsertAdjust(root, cur), cur
 }
 
-// returns finish, hasDeleted, new root
-func rbDelete(root *rbTreeNode, node *rbTreeNode, value NodeValue) (*rbTreeNode, bool) {
+// returns finish, hasDeleted, new root, node deleted and whether deleting success
+func rbDelete(root *rbTreeNode, node *rbTreeNode, value NodeValue) (*rbTreeNode, *rbTreeNode, bool) {
 	if node == nil {
-		return root, false
+		return root, nil, false
 	}
 	if node.value.Compare(value) < 0 {
 		return rbDelete(root, node.right, value)
@@ -369,9 +363,9 @@ func rbDelete(root *rbTreeNode, node *rbTreeNode, value NodeValue) (*rbTreeNode,
 	// case 0: node has no children and color is red: just delete
 	if node.left == nil && node.right == nil {
 		if node.color == RED {
-			return detachChild(root, node), true
+			return detachChild(root, node), node, true
 		} else {
-			return rbDeleteNode(root, node), true
+			return rbDeleteNode(root, node), node, true
 		}
 	}
 	// case 1: node has only one child
@@ -382,12 +376,12 @@ func rbDelete(root *rbTreeNode, node *rbTreeNode, value NodeValue) (*rbTreeNode,
 		} else {
 			node.right.color = BLACK
 		}
-		return replaceWithChild(root, node), true
+		return replaceWithChild(root, node), node, true
 	}
 	// case 2: node has two children
 	s := rbFindSuccessor(node)
 	node.value = s.value
-	return rbDeleteNode(root, s), true
+	return rbDeleteNode(root, s), node, true
 }
 
 func rbTraverse(root *rbTreeNode, f RbTraverseFunc, order TraverseOrder) bool {
@@ -664,7 +658,7 @@ func rbDeleteNode(root, node *rbTreeNode) *rbTreeNode {
 	return detachChild(root, node)
 }
 
-type nodeColor int
+type nodeColor int8
 
 // traverse function that iterates over the tree. Traverse would stop if RbTraverseFunc returns false
 type RbTraverseFunc func(node *rbTreeNode) bool
@@ -674,37 +668,6 @@ func (n nodeColor) String() string {
 		return "red"
 	} else {
 		return "black"
-	}
-}
-
-func (iter TreeIterator) Next() NodeValue {
-	select {
-	case v, ok := <-iter.ch:
-		if !ok {
-			return nil
-		}
-		return v
-	case <-iter.closed:
-		return nil
-	}
-}
-
-func (iter TreeIterator) Close() {
-	select {
-	case <-iter.closed:
-		return
-	default:
-		close(iter.closed)
-		close(iter.ch)
-	}
-}
-
-func (iter TreeIterator) HasNext() bool {
-	select {
-	case <-iter.closed:
-		return false
-	default:
-		return true
 	}
 }
 

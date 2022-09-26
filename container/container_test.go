@@ -34,14 +34,6 @@ func TestSlice(t *testing.T) {
 			sli: []string{"abc", "def", "ghi"},
 			ele: "deff",
 		},
-		{
-			sli: nil,
-			ele: "test",
-		},
-		{
-			sli: "abcd",
-			ele: "a",
-		},
 	}
 
 	for _, arg := range args {
@@ -227,4 +219,24 @@ func (o *CoralObj) Size() int64 {
 type CoralStringPersistence struct {
 	path string
 	size int64
+}
+
+func TestLimitedQueueBinarySearch(t *testing.T) {
+	tree := NewLimitedQueueBinarySearch(nil, 1000)
+	for i := 0; i < 200000; i++ {
+		tree.Insert(Element(i))
+	}
+	if !tree.Validate() {
+		t.Fatal("tree is invalid")
+	}
+	t.Logf("tree: %s", tree.PrettyPrint())
+	inOrders := make([]NodeValue, 0, tree.Size())
+	tree.Traverse(func(value NodeValue) bool {
+		inOrders = append(inOrders, value)
+		return true
+	}, InOrder)
+	if len(inOrders) != tree.Size() {
+		t.Fatal("unexpected")
+	}
+	t.Logf("inorders: %s", inOrders)
 }
