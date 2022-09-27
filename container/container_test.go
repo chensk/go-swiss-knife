@@ -151,7 +151,7 @@ func createRandomRbTree(size int) *RedBlackTree {
 func TestIterator(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		tree := createRandomRbTree(1000)
-		iter, err := tree.Iterator(Element(654), Element(790), InOrder)
+		iter, err := CreateTreeIterator(tree, Element(654), Element(790), InOrder)
 		if err != nil {
 			t.Fatal(err)
 		}

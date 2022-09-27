@@ -1,7 +1,6 @@
 package container
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -230,53 +229,6 @@ func (t *RedBlackTree) PopMax(atMost NodeValue, delete bool) NodeValue {
 		}
 	}
 	return v
-}
-
-func (t *RedBlackTree) Iterator(from NodeValue, to NodeValue, order TraverseOrder) (*TreeIterator, error) {
-	if from != nil && to != nil && from.Compare(to) > 0 {
-		return nil, errors.New("invalid bound")
-	}
-	ch := make(chan NodeValue)
-	closed := make(chan struct{})
-	go func() {
-		t.Traverse(func(value NodeValue) bool {
-			if (from == nil || value.Compare(from) >= 0) && (to == nil || value.Compare(to) <= 0) {
-				// double check closed channel to prevent nil panic
-				select {
-				case <-closed:
-					return false
-				default:
-				}
-
-				select {
-				case <-closed:
-					return false
-				case ch <- value:
-				}
-			}
-			switch order {
-			case PreOrder, PostOrder:
-				return true
-			case InOrder:
-				return to == nil || value.Compare(to) <= 0
-			case ReversedOrder:
-				return from == nil || value.Compare(from) >= 0
-			default:
-				return false
-			}
-		}, order)
-		select {
-		case <-closed:
-			return
-		default:
-			close(closed)
-			close(ch)
-		}
-	}()
-	return &TreeIterator{
-		ch:     ch,
-		closed: closed,
-	}, nil
 }
 
 func rbHeight(root *rbTreeNode) int {
