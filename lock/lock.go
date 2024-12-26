@@ -2,16 +2,12 @@ package lock
 
 import (
 	"errors"
-	"fmt"
 	"github.com/chensk/go-swiss-knife/net"
 	"time"
 )
 
 func init() {
-	ip, err := net.GetCurrentIpv4()
-	if err != nil {
-		panic(fmt.Errorf("fail to get ip: %w", err))
-	}
+	ip := net.GetCurrentIpv6()
 	CurrentIp = ip
 }
 

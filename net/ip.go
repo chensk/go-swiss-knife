@@ -20,3 +20,17 @@ func GetCurrentIpv4() (string, error) {
 	}
 	return "", errors.New("unable to get ip")
 }
+
+func GetCurrentIpv6() string {
+	// google dns
+	conn, err := net.Dial("udp", "[2001:4860:4860::8888]:80")
+	if err != nil {
+		return ""
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String()
+}
